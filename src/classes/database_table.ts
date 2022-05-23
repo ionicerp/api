@@ -1,7 +1,7 @@
-import { ICrudOperator } from "../interfaces/crud_operator";
+import { IGetOperation, IPostOperation } from "../interfaces/crud_operator";
 
-export class DatabaseTable implements ICrudOperator {
-    async create(data: any): Promise<any> {
-        throw new Error('MasterDataTable not implemented.');
-    }
+export abstract class DatabaseTable implements IPostOperation, IGetOperation {
+    abstract get(id: any): Promise<any>;
+    abstract list(limit?: number): Promise<any[] | any>;
+    abstract create(data: any): Promise<any>;
 }

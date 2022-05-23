@@ -51,6 +51,24 @@ app.post('/:entity', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/:entity', async (req: Request, res: Response) => {
+  const entity: string = req.params.entity;
+  const limit: number = req.query.limit ? parseInt(req.query.limit as string) : 10;
+  // http://localhost:8888/account?limit=3
+
+  const dbTable: DatabaseTable = EntityMap.get(entity)!;
+  if (dbTable) {
+    const createData = await dbTable.list(limit);
+    if (!Array.isArray(createData)) {
+      res.status(500).send({ result: createData });
+    } else {
+      res.status(200).send({ result: createData });
+    }
+  } else {
+    res.status(400).send({ result: 'entity not found!' });
+  }
+});
+
 app.listen(port, () => {
   console.log(`⚡️[server]: Server is running at https://localhost:${port}`);
 });
