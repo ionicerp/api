@@ -1,21 +1,19 @@
-import express, { Express, Request, Response } from 'express';
-import dotenv from 'dotenv';
+import express, { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import cors from 'cors';
+import { Pool } from 'pg';
+import 'dotenv/config'
 
-const Pool = require('pg').Pool
 const NODE_ENV = process.env.NODE_ENV || 'production';
 const pool = new Pool({
   user: 'postgres',
-  host: NODE_ENV === 'production' ? 'host.docker.internal' : 'localhost',
-  database: 'autolive',
+  host: NODE_ENV === 'production' ? 'host.docker.internal' : '192.168.0.8',
+  database: 'ionicerp',
   password: 'helloworld',
   port: 5432,
 });
 
-dotenv.config();
-
-const app: Express = express();
+const app = express();
 const port = process.env.PORT || 8000;
 
 app.use(express.json());
@@ -28,7 +26,7 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 app.get('/users', (req: Request, res: Response) => {
-  pool.query('SELECT * FROM users ORDER BY name ASC', (error: any, results: { rows: any; }) => {
+  pool.query('SELECT * FROM accounts', (error, results) => {
     if (error) {
       throw error
     }
@@ -40,7 +38,7 @@ app.post('/users', (req: Request, res: Response) => {
   const { name } = req.body;
   const uuid = uuidv4();
 
-  pool.query('INSERT INTO users (uuid, name) VALUES ($1, $2)', [uuid, name], (error: any, results: any) => {
+  pool.query('INSERT INTO users (uuid, name) VALUES ($1, $2)', [uuid, name], (error, results) => {
     if (error) {
       throw error
     }
@@ -50,7 +48,7 @@ app.post('/users', (req: Request, res: Response) => {
 
 app.delete('/users/:id', (req: Request, res: Response) => {
   const id = req.params.id;
-  pool.query('DELETE FROM users WHERE uuid = $1', [id], (error: any, results: any) => {
+  pool.query('DELETE FROM users WHERE uuid = $1', [id], (error, results) => {
     if (error) {
       throw error
     }
