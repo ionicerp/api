@@ -13,9 +13,12 @@ model account {
 
 model user {
   id            BigInt          @id @default(autoincrement())
-  name          String          @db.VarChar(100)
+  username      String          @unique @db.VarChar(50)
+  password      String          @db.VarChar(255)
+  refresh_token String?          @db.VarChar(255)
+  name          String?         @db.VarChar(100)
   email_address String?         @db.VarChar(255)
-  phone_number  String          @db.VarChar(50)
+  phone_number  String?         @db.VarChar(50)
   addresses     address[]
   administrator administrator[]
 }
