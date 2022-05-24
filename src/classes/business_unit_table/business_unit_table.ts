@@ -1,9 +1,9 @@
 import { DatabaseTable } from '../database_table';
 
-export class AccountTable extends DatabaseTable {
+export class BusinessUnitTable extends DatabaseTable {
   async get(id: number): Promise<any> {
     try {
-      return await this.prisma.account.findUnique({
+      return await this.prisma.business_unit.findUnique({
         where: {
           id: id
         }
@@ -14,7 +14,7 @@ export class AccountTable extends DatabaseTable {
   }
   async list(condition: any, limit: number): Promise<any[] | any> {
     try {
-      const accounts = await this.prisma.account.findMany({
+      const accounts = await this.prisma.business_unit.findMany({
         where: condition,
         take: limit
       });
@@ -25,12 +25,12 @@ export class AccountTable extends DatabaseTable {
   }
   async create(data: any): Promise<any> {
     try {
-      const a = await this.prisma.account.create({
+      return await this.prisma.business_unit.create({
         data: data
       });
-      return { id: a.id };
     } catch (e) {
       return e;
     }
   }
+
 }

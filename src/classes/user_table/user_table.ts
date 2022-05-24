@@ -1,13 +1,40 @@
-import { DatabaseTable } from "../database_table";
+import { DatabaseTable } from '../database_table';
 
 export class UserTable extends DatabaseTable {
-    async list(limit?: number): Promise<any[] | any> {
-        return "Method not implemented.";
+  async get(id: number): Promise<any> {
+    try {
+      return await this.prisma.user.findUnique({
+        where: {
+          id: id
+        }
+      });
+    } catch (e) {
+      return e;
     }
-    async get(id: any): Promise<any> {
-        return "Method not implemented.";
+  }
+  async list(condition: any, limit: number): Promise<any[] | any> {
+    try {
+      const accounts = await this.prisma.user.findMany({
+        where: condition,
+        take: limit
+      });
+      return accounts;
+    } catch (e) {
+      return e;
     }
-    async create(data: any): Promise<any> {
-        return 'UserTable not implemented.';
+  }
+  async create(data: any): Promise<any> {
+    try {
+      console.log('1');
+      
+      const record = await this.prisma.user.create({
+        data: data
+      });
+      console.log(record);
+      
+      return { id: Number(record.id) }
+    } catch (e) {
+      return e;
     }
+  }
 }

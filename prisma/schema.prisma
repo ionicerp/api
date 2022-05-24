@@ -7,9 +7,134 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model accounts {
-  user_id  Int    @id @default(autoincrement())
-  username String @unique @db.VarChar(50)
-  password String @db.VarChar(50)
-  email    String @unique @db.VarChar(255)
+model account {
+  id BigInt @id @default(autoincrement())
+}
+
+model user {
+  id            BigInt          @id @default(autoincrement())
+  name          String          @db.VarChar(100)
+  email_address String?         @db.VarChar(255)
+  phone_number  String          @db.VarChar(50)
+  addresses     address[]
+  administrator administrator[]
+}
+
+model administrator {
+  id               BigInt         @id @default(autoincrement())
+  user             user?          @relation(fields: [user_id], references: [id])
+  user_id          BigInt?
+  organization     organization?  @relation(fields: [organization_id], references: [id])
+  organization_id  BigInt?
+  business_unit    business_unit? @relation(fields: [business_unit_id], references: [id])
+  business_unit_id BigInt?
+}
+
+model address {
+  id                             BigInt         @id @default(autoincrement())
+  street                         String
+  city                           String
+  state                          String
+  country                        String
+  post_code                      Int
+  is_billing_and_invoice_address Boolean
+  is_delivery_address            Boolean
+  user                           user?          @relation(fields: [user_id], references: [id])
+  user_id                        BigInt?
+  organization                   organization?  @relation(fields: [organization_id], references: [id])
+  organization_id                BigInt?
+  business_unit                  business_unit? @relation(fields: [business_unit_id], references: [id])
+  business_unit_id               BigInt?
+  customer                       customer?      @relation(fields: [customer_id], references: [id])
+  customer_id                    BigInt?
+}
+
+model organization {
+  id             BigInt          @id @default(autoincrement())
+  name           String          @unique @db.VarChar(50)
+  email          String?         @unique @db.VarChar(255)
+  administrators administrator[]
+  address        address[]
+}
+
+model business_unit {
+  id             BigInt          @id @default(autoincrement())
+  name           String          @unique @db.VarChar(50)
+  email          String          @db.VarChar(255)
+  description    String          @db.VarChar(255)
+  administrators administrator[]
+  addresses      address[]
+  customer       customer[]
+  content        content[]
+}
+
+model customer {
+  id               BigInt            @id @default(autoincrement())
+  name             String            @unique @db.VarChar(50)
+  email            String            @unique @db.VarChar(255)
+  description      String            @db.VarChar(255)
+  addresses        address[]
+  business_unit    business_unit     @relation(fields: [business_unit_id], references: [id])
+  business_unit_id BigInt
+  device           customer_device[]
+  claim            claim[]
+}
+
+model device {
+  id               BigInt            @id @default(autoincrement())
+  name             String            @unique @db.VarChar(50)
+  device_brand     String            @db.VarChar(50)
+  device_model     String            @db.VarChar(50)
+  customers        customer_device[]
+  service_orders   service_order[]
+  service_order_id BigInt?
+}
+
+model customer_device {
+  id          BigInt   @id @default(autoincrement())
+  device      device   @relation(fields: [device_id], references: [id])
+  device_id   BigInt
+  customer    customer @relation(fields: [customer_id], references: [id])
+  customer_id BigInt
+}
+
+model service_order {
+  id                    BigInt                 @id @default(autoincrement())
+  name                  String
+  operation             String
+  inspection_checklists inspection_checklist[]
+  service_order_jobs    service_order_job[]
+  device                device                 @relation(fields: [device_id], references: [id])
+  device_id             BigInt
+}
+
+model service_order_job {
+  id               BigInt        @id @default(autoincrement())
+  service_order    service_order @relation(fields: [service_order_id], references: [id])
+  service_order_id BigInt
+}
+
+model inspection_checklist {
+  id               BigInt        @id @default(autoincrement())
+  name             String
+  service_order    service_order @relation(fields: [service_order_id], references: [id])
+  service_order_id BigInt
+}
+
+model claim {
+  id          BigInt   @id @default(autoincrement())
+  name        String
+  customer    customer @relation(fields: [customer_id], references: [id])
+  customer_id BigInt
+}
+
+model content {
+  id               BigInt        @id @default(autoincrement())
+  name             String
+  expire_on        DateTime
+  description      String
+  publish_on       DateTime
+  business_unit    business_unit @relation(fields: [business_unit_id], references: [id])
+  business_unit_id BigInt
+  html_content     String
 }
