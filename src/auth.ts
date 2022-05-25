@@ -5,11 +5,6 @@ import { verify, sign, Jwt, JwtPayload } from 'jsonwebtoken';
 const prisma = new PrismaClient();
 
 export const auth = (app: Express) => {
-  app.get('/login', function (req, res) {
-    res.render('login', {
-      title: 'Express Login'
-    });
-  });
   app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -21,16 +16,16 @@ export const auth = (app: Express) => {
       });
       if (count > 0) throw new Error('User already exist');
       const hashedPassword = await hash(password, 10);
-      // Insert the user in database
+      // Create user in db
       await prisma.user.create({
         data: {
           username: username,
           password: hashedPassword
         },
       });
-      res.send({ message: 'User Created' });
+      res.status(200).send({ status: 'success', message: 'User Created' });
     } catch (err: any) {
-      res.send({ error: err.message });
+      res.status(500).send({ status: "error", data: err, message: err.message });
     }
   });
 
@@ -48,47 +43,74 @@ export const auth = (app: Express) => {
       const valid = await compare(password, user.password);
       if (!valid) throw new Error('Password not correct');
       // Create Refresh- and Accesstoken
-      const accesstoken = createAccessToken(Number(user.id));
-      const refreshtoken = createRefreshToken(Number(user.id));
-      // 4. Store Refreshtoken with user
-      // Could also use different version numbers instead.
-      // Then just increase the version number on the revoke endpoint
-      user.refresh_token = refreshtoken;
-      // Send token. Refreshtoken as a cookie and accesstoken as a regular response
-      sendRefreshToken(res, refreshtoken);
-      sendAccessToken(res, req, accesstoken);
-    } catch (err: any) {
-      res.send({
-        error: `${err.message}`,
+      const accessToken = createAccessToken({ username: username });
+      const refreshToken = createRefreshToken({ username: username });
+      // Store Refreshtoken with user
+      await prisma.user.update({
+        where: {
+          username: username
+        },
+        data: {
+          refresh_token: refreshToken
+        }
+      })
+      // Send access token
+      res.status(200).send({
+        status: 'success',
+        message: 'Login successfully',
+        data: { access_token: accessToken, refresh_token: refreshToken },
       });
+      // Refreshtoken as a cookie
+      // res.cookie('refresh_token', refreshToken, {
+      //   httpOnly: true,
+      //   path: '/refresh_token',
+      // });
+    } catch (err: any) {
+      res.status(500).send({ status: "error", data: err, message: err.message });
     }
   });
 
   app.post('/refresh_token', async (req, res) => {
-    const token = req.cookies.refreshtoken;
+    const refreshToken = req.body.refresh_token;
+    // const refreshToken = req.cookies.refresh_token;
+    if (!refreshToken) return res.status(400).send({ status: 'error', message: 'No token provided' });
+    try {
+      const payload = verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as JwtPayload;
+      const user = await prisma.user.findUnique({
+        where: {
+          username: payload.username
+        }
+      });
+      if (!user)
+        return res.send({ status: 'error', message: 'User does not exist' });
+      if (!user.refresh_token || user.refresh_token !== refreshToken)
+        return res.send({ status: 'error', message: 'Invalid refresh token. Please login again.' });
+      const accessToken = createAccessToken({ username: user.username });
+      return res.status(200).send({ access_token: accessToken, refresh_token: refreshToken });
+      // res.cookie('refresh_token', refreshToken, {
+      //   httpOnly: true,
+      //   path: '/refresh_token',
+      // });
+    } catch (err) {
+      return res.status(401).send({ status: 'error', message: 'Invalid token' });
+    }
+  });
+
+  app.post('/logout', async (req, res) => {
+    const refreshToken = req.body.refresh_token;
     // If we don't have a token in our request
-    if (!token) return res.send({ accesstoken: '' });
+    if (!refreshToken) return res.send({ status: 'error', message: 'No refresh token' });
     // We have a token, let's verify it!
-    const payload = verify(token, process.env.REFRESH_TOKEN_SECRET!) as JwtPayload;
-    // token is valid, check if user exist
-    const user = await prisma.user.findUnique({
+    const payload = verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as JwtPayload;
+    prisma.user.update({
       where: {
-        username: payload.userId
+        username: payload.username
+      },
+      data: {
+        refresh_token: null
       }
     });
-    if (!user) return res.send({ accesstoken: '' });
-    // user exist, check if refreshtoken exist on user
-    if (user.refresh_token !== token)
-      return res.send({ accesstoken: '' });
-    // token exist, create new Refresh- and accesstoken
-    const accesstoken = createAccessToken(Number(user.id));
-    const refreshtoken = createRefreshToken(Number(user.id));
-    // update refreshtoken on user in db
-    // Could have different versions instead!
-    user.refresh_token = refreshtoken;
-    // All good to go, send new refreshtoken and accesstoken
-    sendRefreshToken(res, refreshtoken);
-    return res.send({ accesstoken });
+    return res.send({ status: 'success', message: 'Logged out' });
   });
 }
 
@@ -99,36 +121,19 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   const token = authorization.split(' ')[1];
   verify(token, process.env.ACCESS_TOKEN_SECRET!, (err, user) => {
     if (err) return res.status(403).send({ status: 'error', data: err, message: 'Invalid token.' });
-    req.user = user;
-    next();
+    const userPayload = user as JwtPayload;
+    const username = userPayload.username;
+    console.log(username);
   });
-
+  next();
 };
 
-const createAccessToken = (userId: number) => {
-  return sign({ userId }, process.env.ACCESS_TOKEN_SECRET!, {
-    expiresIn: '8h',
-  });
+const createAccessToken = (data: any) => {
+  return sign(data, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: '15m' });
 };
 
-const createRefreshToken = (userId: number) => {
-  return sign({ userId }, process.env.REFRESH_TOKEN_SECRET!, {
-    expiresIn: '7d',
-  });
-};
-
-const sendAccessToken = (res: Response, req: Request, accesstoken: string) => {
-  res.send({
-    accesstoken,
-    email: req.body.email,
-  });
-};
-
-const sendRefreshToken = (res: Response, token: string) => {
-  res.cookie('refreshtoken', token, {
-    httpOnly: true,
-    path: '/refresh_token',
-  });
+const createRefreshToken = (data: any) => {
+  return sign(data, process.env.REFRESH_TOKEN_SECRET!, { expiresIn: '7d' });
 };
 
 // app.post('/login', (req, res) => {
