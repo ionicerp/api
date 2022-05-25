@@ -52,8 +52,6 @@ app.put('/:entity', authenticateToken, async (req: Request, res: Response) => {
   const entity: string = req.params.entity;
   const databaseTable: DatabaseTable = correspondingDatabaseTable(entity);
   if (!databaseTable) return res.status(400).send({ result: 'entity not found!' });
-  console.log(req.body);
-
   databaseTable.create(req.body).then(result => {
     return res.status(200).send({ status: 'success', data: result, message: 'record created' });
   }).catch(error => {

@@ -25,13 +25,9 @@ export class UserTable extends DatabaseTable {
   }
   async create(data: any): Promise<any> {
     try {
-      console.log('1');
-      
       const record = await this.prisma.user.create({
         data: data
       });
-      console.log(record);
-      
       return { id: Number(record.id) }
     } catch (e) {
       return e;
