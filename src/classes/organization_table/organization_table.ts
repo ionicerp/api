@@ -30,7 +30,7 @@ export class OrganizationTable extends DatabaseTable {
     const result = await this.prisma.organization.create({
       data: data
     });
-    return { id: Number(result.id) };
+    return result;
   }
 
 }
