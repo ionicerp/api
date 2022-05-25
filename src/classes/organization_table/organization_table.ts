@@ -18,16 +18,19 @@ export class OrganizationTable extends DatabaseTable {
         ...condition
       },
       take: limit
-    })
+    });
   }
   async create(data: any): Promise<any> {
-    try {
-      return await this.prisma.organization.create({
-        data: data
-      });
-    } catch (e) {
-      return e;
-    }
+    const count = await this.prisma.organization.count({
+      where: {
+        name: data.name
+      }
+    });
+    if (count > 0) throw new Error('Organization already exists');
+    const result = await this.prisma.organization.create({
+      data: data
+    });
+    return { id: Number(result.id) };
   }
 
 }
