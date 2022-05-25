@@ -12,8 +12,13 @@ export class ServiceOrderTable extends DatabaseTable {
       return e;
     }
   }
-  list(condition: any, limit: number): Promise<any> {
-    throw new Error('Method not implemented.');
+  async list(condition: any, limit: number): Promise<any> {
+    return await this.prisma.service_order.findMany({
+      where: {
+        ...condition
+      },
+      take: limit
+    });
   }
   async create(data: any): Promise<any> {
     try {
